@@ -1,12 +1,15 @@
-module "default_label" {
-  source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.3.3"
-  namespace  = "${var.namespace}"
-  stage      = "${var.stage}"
-  name       = "${var.name}"
-  delimiter  = "${var.delimiter}"
-  attributes = "${var.attributes}"
-  tags       = "${var.tags}"
-  enabled    = "${var.enabled}"
+module "label" {
+  source             = "git::https://github.com/cloudposse/terraform-null-label.git?ref=0.5.0"
+  additional_tag_map = "${var.additional_tag_map}"
+  attributes         = "${var.attributes}"
+  context            = "${var.context}"
+  delimiter          = "${var.delimiter}"
+  environment        = "${var.environment}"
+  label_order        = "${var.label_order}"
+  name               = "${var.name}"
+  namespace          = "${var.namespace}"
+  stage              = "${var.stage}"
+  tags               = "${var.tags}"
 }
 
 data "aws_iam_policy_document" "assume_role" {
@@ -26,9 +29,15 @@ data "aws_iam_policy_document" "assume_role" {
   }
 }
 
+module "label_autoscaler" {
+  source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=0.5.0"
+  attributes = ["autoscaler"]
+  context    = "${var.context}"
+}
+
 resource "aws_iam_role" "autoscaler" {
   count              = "${var.enabled == "true" ? 1 : 0}"
-  name               = "${module.default_label.id}${var.delimiter}autoscaler"
+  name               = "${module.label_autoscaler.id}"
   assume_role_policy = "${data.aws_iam_policy_document.assume_role.json}"
 }
 
@@ -47,9 +56,15 @@ data "aws_iam_policy_document" "autoscaler" {
   }
 }
 
+module "label_autoscaler_dynamodb" {
+  source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=0.5.0"
+  attributes = ["dynamodb"]
+  context    = "${module.label_autoscaler.context}"
+}
+
 resource "aws_iam_role_policy" "autoscaler" {
   count  = "${var.enabled == "true" ? 1 : 0}"
-  name   = "${module.default_label.id}${var.delimiter}autoscaler${var.delimiter}dynamodb"
+  name   = "${module.label_autoscaler_dynamodb.id}"
   role   = "${join("", aws_iam_role.autoscaler.*.id)}"
   policy = "${data.aws_iam_policy_document.autoscaler.json}"
 }
@@ -70,9 +85,15 @@ data "aws_iam_policy_document" "autoscaler_cloudwatch" {
   }
 }
 
+module "label_autoscaler_cloudwatch" {
+  source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=0.5.0"
+  attributes = ["cloudwatch"]
+  context    = "${module.label_autoscaler.context}"
+}
+
 resource "aws_iam_role_policy" "autoscaler_cloudwatch" {
   count  = "${var.enabled == "true" ? 1 : 0}"
-  name   = "${module.default_label.id}${var.delimiter}autoscaler${var.delimiter}cloudwatch"
+  name   = "${module.label_autoscaler_cloudwatch.id}"
   role   = "${join("", aws_iam_role.autoscaler.*.id)}"
   policy = "${data.aws_iam_policy_document.autoscaler_cloudwatch.json}"
 }
